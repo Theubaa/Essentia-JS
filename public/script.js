@@ -172,12 +172,15 @@ async function analyzeAllAudio() {
         
         const allResults = [];
         
-        // Process each file
+        // Process each file with progress updates
         for (let i = 0; i < audioFiles.length; i++) {
             const file = audioFiles[i];
             
             // Update progress
             progressText.textContent = `Processing ${i + 1}/${audioFiles.length}: ${file.name}`;
+            
+            // Allow UI to update
+            await new Promise(resolve => setTimeout(resolve, 10));
             
             try {
                 // Read and decode audio file
@@ -186,8 +189,8 @@ async function analyzeAllAudio() {
                 
                 console.log(`Analyzing: ${file.name}`);
                 
-                // Perform analysis
-                const results = await performAudioAnalysis(audioBuffer, file.name);
+                // Perform optimized analysis
+                const results = await performOptimizedAnalysis(audioBuffer, file.name, i);
                 allResults.push(results);
                 
             } catch (error) {
@@ -201,7 +204,7 @@ async function analyzeAllAudio() {
         }
         
         // Display all results
-        displayAllResults(allResults);
+        displayAdvancedResults(allResults);
         
         // Hide loading, show results
         loading.style.display = 'none';
@@ -214,36 +217,43 @@ async function analyzeAllAudio() {
     }
 }
 
-async function performAudioAnalysis(audioBuffer, fileName) {
+async function performOptimizedAnalysis(audioBuffer, fileName, fileIndex) {
     const results = { fileName, error: false };
     
     try {
-        // Get audio data
+        // Get audio data and downsample for faster processing
         const audioData = audioBuffer.getChannelData(0);
         const sampleRate = audioBuffer.sampleRate;
-        const duration = audioBuffer.duration;
         
-        // 1. Basic audio statistics
-        console.log('Analyzing basic audio features...');
-        const basicStats = calculateBasicStats(audioData);
-        results.basicStats = basicStats;
+        // Downsample audio for faster processing (maintains accuracy)
+        const downsampledData = downsampleAudio(audioData, sampleRate, 22050);
+        const downsampledSampleRate = 22050;
         
-        // 2. Frequency analysis
-        console.log('Analyzing frequency spectrum...');
-        const frequencyAnalysis = await analyzeFrequencySpectrum(audioData, sampleRate);
-        results.frequencyAnalysis = frequencyAnalysis;
+        // Update progress
+        progressText.textContent = `Analyzing BPM for ${fileName}...`;
+        await new Promise(resolve => setTimeout(resolve, 5));
         
-        // 3. Rhythm analysis
-        console.log('Analyzing rhythm...');
-        const rhythmAnalysis = analyzeRhythm(audioData, sampleRate);
-        results.rhythmAnalysis = rhythmAnalysis;
+        // 1. Fast BPM Detection
+        const bpmAnalysis = await analyzeBPMFast(downsampledData, downsampledSampleRate);
+        results.bpm = bpmAnalysis;
         
-        // 4. Spectral analysis
-        console.log('Analyzing spectral features...');
-        const spectralAnalysis = analyzeSpectralFeatures(audioData, sampleRate);
-        results.spectralAnalysis = spectralAnalysis;
+        // Update progress
+        progressText.textContent = `Analyzing danceability for ${fileName}...`;
+        await new Promise(resolve => setTimeout(resolve, 5));
         
-        console.log('Analysis complete for:', fileName);
+        // 2. Optimized Danceability Analysis
+        const danceabilityAnalysis = analyzeDanceabilityFast(downsampledData, downsampledSampleRate);
+        results.danceability = danceabilityAnalysis;
+        
+        // Update progress
+        progressText.textContent = `Analyzing mood for ${fileName}...`;
+        await new Promise(resolve => setTimeout(resolve, 5));
+        
+        // 3. Fast Mood Detection
+        const moodAnalysis = analyzeMoodFast(downsampledData, downsampledSampleRate);
+        results.mood = moodAnalysis;
+        
+        console.log('Optimized analysis complete for:', fileName);
         return results;
         
     } catch (error) {
@@ -254,129 +264,480 @@ async function performAudioAnalysis(audioBuffer, fileName) {
     }
 }
 
-function calculateBasicStats(audioData) {
-    let sum = 0;
-    let sumSquares = 0;
-    let min = Infinity;
-    let max = -Infinity;
+// Fast BPM Detection using optimized algorithms
+async function analyzeBPMFast(audioData, sampleRate) {
+    // Use efficient onset detection
+    const onsets = detectOnsetsFast(audioData, sampleRate);
     
-    for (let i = 0; i < audioData.length; i++) {
-        const sample = audioData[i];
-        sum += sample;
-        sumSquares += sample * sample;
-        min = Math.min(min, sample);
-        max = Math.max(max, sample);
+    // Find peaks efficiently
+    const peaks = findPeaksFast(onsets);
+    
+    // Calculate BPM from peak intervals
+    const intervals = [];
+    for (let i = 1; i < peaks.length; i++) {
+        intervals.push(peaks[i] - peaks[i - 1]);
     }
     
-    const mean = sum / audioData.length;
-    const variance = (sumSquares / audioData.length) - (mean * mean);
-    const rms = Math.sqrt(sumSquares / audioData.length);
-    const dynamicRange = max - min;
+    // Convert to BPM efficiently
+    const bpms = intervals.map(interval => {
+        const timeInSeconds = interval * 0.01; // 10ms hop size
+        return 60 / timeInSeconds;
+    });
     
-    return {
-        mean: mean,
-        rms: rms,
-        dynamicRange: dynamicRange,
-        peak: max,
-        valley: min
-    };
-}
-
-async function analyzeFrequencySpectrum(audioData, sampleRate) {
-    // Use Web Audio API's AnalyserNode for frequency analysis
-    const analyser = audioContext.createAnalyser();
-    const bufferSource = audioContext.createBufferSource();
+    // Find most common BPM using histogram
+    const bpmHistogram = {};
+    bpms.forEach(bpm => {
+        const roundedBpm = Math.round(bpm);
+        if (roundedBpm >= 60 && roundedBpm <= 200) {
+            bpmHistogram[roundedBpm] = (bpmHistogram[roundedBpm] || 0) + 1;
+        }
+    });
     
-    // Create a temporary buffer for analysis
-    const tempBuffer = audioContext.createBuffer(1, audioData.length, sampleRate);
-    tempBuffer.getChannelData(0).set(audioData);
-    bufferSource.buffer = tempBuffer;
-    bufferSource.connect(analyser);
+    let maxCount = 0;
+    let detectedBpm = 120;
     
-    // Configure analyser
-    analyser.fftSize = 2048;
-    const frequencyBinCount = analyser.frequencyBinCount;
-    const frequencyData = new Float32Array(frequencyBinCount);
-    
-    // Get frequency data
-    analyser.getFloatFrequencyData(frequencyData);
-    
-    // Calculate dominant frequency
-    let maxIndex = 0;
-    let maxValue = -Infinity;
-    
-    for (let i = 0; i < frequencyBinCount; i++) {
-        if (frequencyData[i] > maxValue) {
-            maxValue = frequencyData[i];
-            maxIndex = i;
+    for (const [bpm, count] of Object.entries(bpmHistogram)) {
+        if (count > maxCount) {
+            maxCount = count;
+            detectedBpm = parseInt(bpm);
         }
     }
     
-    const dominantFrequency = (maxIndex * sampleRate) / (2 * frequencyBinCount);
-    
     return {
-        dominantFrequency: dominantFrequency,
-        frequencyData: frequencyData
+        bpm: detectedBpm,
+        confidence: Math.min(1, maxCount / bpms.length),
+        tempoCategory: getTempoCategory(detectedBpm)
     };
 }
 
-function analyzeRhythm(audioData, sampleRate) {
-    // Simple rhythm analysis using zero-crossing rate
-    let zeroCrossings = 0;
+// Fast onset detection
+function detectOnsetsFast(audioData, sampleRate) {
+    const frameSize = Math.floor(0.025 * sampleRate); // 25ms frames
+    const hopSize = Math.floor(0.010 * sampleRate); // 10ms hop
+    const onsets = [];
     
-    for (let i = 1; i < audioData.length; i++) {
-        if ((audioData[i] >= 0 && audioData[i - 1] < 0) || 
-            (audioData[i] < 0 && audioData[i - 1] >= 0)) {
+    for (let i = 0; i < audioData.length - frameSize; i += hopSize) {
+        const frame = audioData.slice(i, i + frameSize);
+        const energy = frame.reduce((sum, sample) => sum + sample * sample, 0) / frameSize;
+        onsets.push(energy);
+    }
+    
+    return onsets;
+}
+
+// Fast peak detection
+function findPeaksFast(data) {
+    const peaks = [];
+    const threshold = Math.max(...data) * 0.3; // Lower threshold for more peaks
+    
+    for (let i = 1; i < data.length - 1; i++) {
+        if (data[i] > threshold && data[i] > data[i - 1] && data[i] > data[i + 1]) {
+            peaks.push(i);
+        }
+    }
+    
+    return peaks;
+}
+
+// Fast danceability analysis
+function analyzeDanceabilityFast(audioData, sampleRate) {
+    // Calculate rhythm strength efficiently
+    const rhythmStrength = calculateRhythmStrengthFast(audioData, sampleRate);
+    
+    // Calculate beat consistency efficiently
+    const beatConsistency = calculateBeatConsistencyFast(audioData);
+    
+    // Calculate energy distribution efficiently
+    const energyDistribution = calculateEnergyDistributionFast(audioData);
+    
+    // Calculate tempo influence
+    const tempoInfluence = calculateTempoInfluenceFast(audioData, sampleRate);
+    
+    // Calculate syncopation
+    const syncopation = calculateSyncopationFast(audioData);
+    
+    // Combine factors for danceability score
+    const danceabilityScore = (
+        rhythmStrength * 0.3 +
+        beatConsistency * 0.3 +
+        energyDistribution * 0.2 +
+        tempoInfluence * 0.1 +
+        syncopation * 0.1
+    );
+    
+    // Determine detailed danceability type
+    const danceabilityType = determineDanceabilityType(danceabilityScore, rhythmStrength, beatConsistency);
+    
+    return {
+        score: Math.min(100, Math.max(0, danceabilityScore * 100)),
+        rhythmStrength: rhythmStrength,
+        beatConsistency: beatConsistency,
+        energyDistribution: energyDistribution,
+        tempoInfluence: tempoInfluence,
+        syncopation: syncopation,
+        category: getDanceabilityCategory(danceabilityScore),
+        type: danceabilityType,
+        confidence: (rhythmStrength + beatConsistency + energyDistribution) / 3
+    };
+}
+
+// Fast rhythm strength calculation
+function calculateRhythmStrengthFast(audioData, sampleRate) {
+    const frameSize = Math.floor(0.025 * sampleRate);
+    const energies = [];
+    
+    for (let i = 0; i < audioData.length - frameSize; i += frameSize) {
+        const frame = audioData.slice(i, i + frameSize);
+        const energy = Math.sqrt(frame.reduce((sum, sample) => sum + sample * sample, 0) / frameSize);
+        energies.push(energy);
+    }
+    
+    // Calculate variance efficiently
+    const mean = energies.reduce((sum, e) => sum + e, 0) / energies.length;
+    const variance = energies.reduce((sum, e) => sum + Math.pow(e - mean, 2), 0) / energies.length;
+    
+    return Math.min(1, variance / (mean * mean));
+}
+
+// Fast beat consistency calculation
+function calculateBeatConsistencyFast(audioData) {
+    let zeroCrossings = 0;
+    const step = Math.max(1, Math.floor(audioData.length / 10000)); // Sample every nth sample
+    
+    for (let i = step; i < audioData.length; i += step) {
+        if ((audioData[i] >= 0 && audioData[i - step] < 0) || 
+            (audioData[i] < 0 && audioData[i - step] >= 0)) {
             zeroCrossings++;
         }
     }
     
-    const zeroCrossingRate = zeroCrossings / audioData.length;
+    const zeroCrossingRate = zeroCrossings / (audioData.length / step);
+    return Math.min(1, zeroCrossingRate * 500); // Adjusted multiplier
+}
+
+// Fast energy distribution calculation
+function calculateEnergyDistributionFast(audioData) {
+    const frameSize = Math.floor(0.025 * 44100);
+    const energies = [];
     
-    // Estimate tempo (very basic)
-    const estimatedTempo = Math.round(zeroCrossingRate * sampleRate * 60 / 2);
+    for (let i = 0; i < audioData.length - frameSize; i += frameSize) {
+        const frame = audioData.slice(i, i + frameSize);
+        const energy = frame.reduce((sum, sample) => sum + sample * sample, 0) / frameSize;
+        energies.push(energy);
+    }
+    
+    const mean = energies.reduce((sum, e) => sum + e, 0) / energies.length;
+    const variance = energies.reduce((sum, e) => sum + Math.pow(e - mean, 2), 0) / energies.length;
+    
+    return Math.max(0, 1 - variance / (mean * mean));
+}
+
+// Fast mood detection
+function analyzeMoodFast(audioData, sampleRate) {
+    // Calculate key features efficiently
+    const spectralCentroid = calculateSpectralCentroidFast(audioData, sampleRate);
+    const zeroCrossingRate = calculateZeroCrossingRateFast(audioData);
+    const energyDistribution = calculateEnergyDistributionFast(audioData);
+    const spectralRolloff = calculateSpectralRolloffFast(audioData, sampleRate);
+    const tempoInfluence = calculateTempoInfluenceFast(audioData, sampleRate);
+    
+    // Determine detailed mood analysis
+    const mood = determineDetailedMood(spectralCentroid, zeroCrossingRate, energyDistribution, spectralRolloff, tempoInfluence);
     
     return {
-        zeroCrossingRate: zeroCrossingRate,
-        estimatedTempo: estimatedTempo
+        primaryMood: mood.primary,
+        secondaryMood: mood.secondary,
+        songType: mood.songType,
+        emoji: mood.emoji,
+        confidence: mood.confidence,
+        moodExplanation: mood.explanation,
+        detailedAnalysis: mood.detailedAnalysis
     };
 }
 
-function analyzeSpectralFeatures(audioData, sampleRate) {
-    // Calculate spectral centroid (center of mass of the spectrum)
-    let weightedSum = 0;
-    let sum = 0;
+// Fast spectral centroid calculation
+function calculateSpectralCentroidFast(audioData, sampleRate) {
+    const frameSize = 512; // Smaller frame size for speed
+    let totalCentroid = 0;
+    let frameCount = 0;
     
-    // Simple spectral analysis using FFT
-    const fftSize = 1024;
-    const hopSize = fftSize / 4;
-    
-    for (let i = 0; i < audioData.length - fftSize; i += hopSize) {
-        const frame = audioData.slice(i, i + fftSize);
+    for (let i = 0; i < audioData.length - frameSize; i += frameSize) {
+        const frame = audioData.slice(i, i + frameSize);
         
-        // Apply window function (Hanning)
-        for (let j = 0; j < fftSize; j++) {
-            frame[j] *= 0.5 * (1 - Math.cos(2 * Math.PI * j / (fftSize - 1)));
-        }
+        let weightedSum = 0;
+        let sum = 0;
         
-        // Simple magnitude spectrum
-        for (let j = 0; j < fftSize / 2; j++) {
-            const frequency = (j * sampleRate) / fftSize;
+        for (let j = 0; j < frameSize / 2; j++) {
+            const frequency = (j * sampleRate) / frameSize;
             const magnitude = Math.abs(frame[j]);
             
             weightedSum += frequency * magnitude;
             sum += magnitude;
         }
+        
+        if (sum > 0) {
+            totalCentroid += weightedSum / sum;
+            frameCount++;
+        }
     }
     
-    const spectralCentroid = sum > 0 ? weightedSum / sum : 0;
+    return frameCount > 0 ? totalCentroid / frameCount : 0;
+}
+
+// Fast zero crossing rate calculation
+function calculateZeroCrossingRateFast(audioData) {
+    let zeroCrossings = 0;
+    const step = Math.max(1, Math.floor(audioData.length / 5000)); // Sample every nth sample
+    
+    for (let i = step; i < audioData.length; i += step) {
+        if ((audioData[i] >= 0 && audioData[i - step] < 0) || 
+            (audioData[i] < 0 && audioData[i - step] >= 0)) {
+            zeroCrossings++;
+        }
+    }
+    
+    return zeroCrossings / (audioData.length / step);
+}
+
+// Calculate tempo influence for danceability
+function calculateTempoInfluenceFast(audioData, sampleRate) {
+    const frameSize = Math.floor(0.1 * sampleRate); // 100ms frames
+    const tempos = [];
+    
+    for (let i = 0; i < audioData.length - frameSize; i += frameSize) {
+        const frame = audioData.slice(i, i + frameSize);
+        const energy = frame.reduce((sum, sample) => sum + sample * sample, 0) / frameSize;
+        tempos.push(energy);
+    }
+    
+    // Calculate tempo stability
+    const mean = tempos.reduce((sum, t) => sum + t, 0) / tempos.length;
+    const variance = tempos.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / tempos.length;
+    
+    return Math.max(0, 1 - variance / (mean * mean));
+}
+
+// Calculate syncopation for danceability
+function calculateSyncopationFast(audioData) {
+    const frameSize = Math.floor(0.025 * 44100);
+    let syncopationScore = 0;
+    
+    for (let i = frameSize; i < audioData.length - frameSize; i += frameSize) {
+        const currentFrame = audioData.slice(i, i + frameSize);
+        const prevFrame = audioData.slice(i - frameSize, i);
+        
+        const currentEnergy = currentFrame.reduce((sum, sample) => sum + sample * sample, 0) / frameSize;
+        const prevEnergy = prevFrame.reduce((sum, sample) => sum + sample * sample, 0) / frameSize;
+        
+        // Detect unexpected accents (syncopation)
+        if (currentEnergy > prevEnergy * 1.5) {
+            syncopationScore += 0.1;
+        }
+    }
+    
+    return Math.min(1, syncopationScore);
+}
+
+// Determine detailed danceability type
+function determineDanceabilityType(score, rhythmStrength, beatConsistency) {
+    const types = [];
+    
+    if (score > 0.8) {
+        types.push({ type: "🕺 Very Danceable", emoji: "🕺", description: "High energy, strong rhythm" });
+    } else if (score > 0.6) {
+        types.push({ type: "💃 Danceable", emoji: "💃", description: "Good rhythm and energy" });
+    } else if (score > 0.4) {
+        types.push({ type: "🕴️ Moderately Danceable", emoji: "🕴️", description: "Some dance elements" });
+    } else if (score > 0.2) {
+        types.push({ type: "🚶 Slightly Danceable", emoji: "🚶", description: "Limited dance potential" });
+    } else {
+        types.push({ type: "🧍 Not Danceable", emoji: "🧍", description: "Low dance energy" });
+    }
+    
+    // Add rhythm characteristics
+    if (rhythmStrength > 0.7) {
+        types.push({ type: "🥁 Strong Rhythm", emoji: "🥁", description: "Clear rhythmic patterns" });
+    }
+    
+    if (beatConsistency > 0.7) {
+        types.push({ type: "⏰ Consistent Beat", emoji: "⏰", description: "Steady tempo" });
+    }
+    
+    return types;
+}
+
+// Enhanced mood determination with detailed analysis
+function determineDetailedMood(spectralCentroid, zeroCrossingRate, energyDistribution, spectralRolloff, tempoInfluence) {
+    let moods = [];
+    let songTypes = [];
+    let emojis = [];
+    let confidence = 0;
+    let explanation = [];
+    let detailedAnalysis = [];
+    
+    // 🕺 Danceability Analysis
+    const danceabilityScore = (energyDistribution + tempoInfluence) / 2;
+    if (danceabilityScore > 0.7) {
+        detailedAnalysis.push({ type: "🕺 Danceability", score: "High", description: "Strong dance potential" });
+    } else if (danceabilityScore > 0.4) {
+        detailedAnalysis.push({ type: "🕺 Danceability", score: "Medium", description: "Moderate dance potential" });
+    } else {
+        detailedAnalysis.push({ type: "🕺 Danceability", score: "Low", description: "Limited dance potential" });
+    }
+    
+    // 😀 Happy Analysis
+    if (spectralCentroid > 1500 && energyDistribution > 0.6) {
+        moods.push('😀 Happy');
+        songTypes.push('Upbeat');
+        emojis.push('😀');
+        confidence += 0.25;
+        explanation.push('High brightness and energy create positive mood');
+        detailedAnalysis.push({ type: "😀 Happy", score: "High", description: "Bright, energetic characteristics" });
+    } else if (spectralCentroid > 1200) {
+        detailedAnalysis.push({ type: "😀 Happy", score: "Medium", description: "Moderately bright sound" });
+    } else {
+        detailedAnalysis.push({ type: "😀 Happy", score: "Low", description: "Darker, less bright sound" });
+    }
+    
+    // 😢 Sad Analysis
+    if (spectralCentroid < 800 && energyDistribution < 0.4) {
+        moods.push('😢 Sad');
+        songTypes.push('Melancholic');
+        emojis.push('😢');
+        confidence += 0.25;
+        explanation.push('Low brightness and energy indicate somber mood');
+        detailedAnalysis.push({ type: "😢 Sad", score: "High", description: "Dark, low energy characteristics" });
+    } else if (spectralCentroid < 1000) {
+        detailedAnalysis.push({ type: "😢 Sad", score: "Medium", description: "Moderately dark sound" });
+    } else {
+        detailedAnalysis.push({ type: "😢 Sad", score: "Low", description: "Brighter, less somber sound" });
+    }
+    
+    // 😌 Relaxed Analysis
+    if (zeroCrossingRate < 0.05 && energyDistribution < 0.5) {
+        moods.push('😌 Relaxed');
+        songTypes.push('Chill');
+        emojis.push('😌');
+        confidence += 0.2;
+        explanation.push('Low complexity and energy create calm feeling');
+        detailedAnalysis.push({ type: "😌 Relaxed", score: "High", description: "Smooth, calm characteristics" });
+    } else if (zeroCrossingRate < 0.08) {
+        detailedAnalysis.push({ type: "😌 Relaxed", score: "Medium", description: "Moderately smooth sound" });
+    } else {
+        detailedAnalysis.push({ type: "😌 Relaxed", score: "Low", description: "More complex, less calm sound" });
+    }
+    
+    // ✊ Aggressiveness Analysis
+    if (zeroCrossingRate > 0.1 && spectralRolloff > 3000) {
+        moods.push('✊ Aggressive');
+        songTypes.push('Intense');
+        emojis.push('✊');
+        confidence += 0.2;
+        explanation.push('High complexity and high frequencies suggest aggression');
+        detailedAnalysis.push({ type: "✊ Aggressiveness", score: "High", description: "Complex, high-frequency characteristics" });
+    } else if (zeroCrossingRate > 0.08) {
+        detailedAnalysis.push({ type: "✊ Aggressiveness", score: "Medium", description: "Moderately complex sound" });
+    } else {
+        detailedAnalysis.push({ type: "✊ Aggressiveness", score: "Low", description: "Smoother, less aggressive sound" });
+    }
+    
+    // 👁 Engagement Analysis
+    const engagementScore = (spectralCentroid / 2000 + energyDistribution + tempoInfluence) / 3;
+    if (engagementScore > 0.7) {
+        detailedAnalysis.push({ type: "👁 Engagement", score: "High", description: "Very engaging and captivating" });
+    } else if (engagementScore > 0.4) {
+        detailedAnalysis.push({ type: "👁 Engagement", score: "Medium", description: "Moderately engaging" });
+    } else {
+        detailedAnalysis.push({ type: "👁 Engagement", score: "Low", description: "Less engaging" });
+    }
+    
+    // 🧠 Approachability Analysis
+    const approachabilityScore = (1 - zeroCrossingRate + energyDistribution) / 2;
+    if (approachabilityScore > 0.7) {
+        detailedAnalysis.push({ type: "🧠 Approachability", score: "High", description: "Very approachable and friendly" });
+    } else if (approachabilityScore > 0.4) {
+        detailedAnalysis.push({ type: "🧠 Approachability", score: "Medium", description: "Moderately approachable" });
+    } else {
+        detailedAnalysis.push({ type: "🧠 Approachability", score: "Low", description: "Less approachable" });
+    }
+    
+    // Determine primary and secondary moods
+    const primaryMood = moods[0] || 'Neutral';
+    const secondaryMood = moods[1] || 'Balanced';
+    const songType = songTypes[0] || 'Mixed';
+    const emoji = emojis[0] || '🎵';
     
     return {
-        spectralCentroid: spectralCentroid
+        primary: primaryMood,
+        secondary: secondaryMood,
+        songType: songType,
+        emoji: emoji,
+        confidence: Math.min(1, confidence),
+        explanation: explanation.join(' • '),
+        detailedAnalysis: detailedAnalysis
     };
 }
 
-function displayAllResults(allResults) {
+// Fast spectral rolloff calculation
+function calculateSpectralRolloffFast(audioData, sampleRate) {
+    const frameSize = 512;
+    let totalRolloff = 0;
+    let frameCount = 0;
+    
+    for (let i = 0; i < audioData.length - frameSize; i += frameSize) {
+        const frame = audioData.slice(i, i + frameSize);
+        
+        // Simple magnitude calculation
+        const magnitudes = [];
+        for (let j = 0; j < frameSize / 2; j++) {
+            magnitudes.push(Math.abs(frame[j]));
+        }
+        
+        // Calculate rolloff (85th percentile)
+        magnitudes.sort((a, b) => a - b);
+        const rolloffIndex = Math.floor(magnitudes.length * 0.85);
+        const rolloff = (rolloffIndex * sampleRate) / frameSize;
+        
+        totalRolloff += rolloff;
+        frameCount++;
+    }
+    
+    return frameCount > 0 ? totalRolloff / frameCount : 0;
+}
+
+// Audio downsampling for faster processing
+function downsampleAudio(audioData, originalSampleRate, targetSampleRate) {
+    const ratio = originalSampleRate / targetSampleRate;
+    const downsampledData = [];
+    
+    for (let i = 0; i < audioData.length; i += ratio) {
+        downsampledData.push(audioData[Math.floor(i)]);
+    }
+    
+    return downsampledData;
+}
+
+// Helper functions
+function getTempoCategory(bpm) {
+    if (bpm < 60) return 'Larghissimo';
+    if (bpm < 66) return 'Largo';
+    if (bpm < 76) return 'Adagio';
+    if (bpm < 108) return 'Andante';
+    if (bpm < 120) return 'Moderato';
+    if (bpm < 168) return 'Allegro';
+    if (bpm < 200) return 'Presto';
+    return 'Prestissimo';
+}
+
+function getDanceabilityCategory(score) {
+    if (score > 0.8) return 'Very Danceable';
+    if (score > 0.6) return 'Danceable';
+    if (score > 0.4) return 'Moderately Danceable';
+    if (score > 0.2) return 'Slightly Danceable';
+    return 'Not Danceable';
+}
+
+function displayAdvancedResults(allResults) {
     resultsContainer.innerHTML = '';
     
     allResults.forEach(result => {
@@ -391,32 +752,51 @@ function displayAllResults(allResults) {
                 </p>
             `;
         } else {
+            // Create detailed analysis section
+            const detailedAnalysisHTML = result.mood.detailedAnalysis.map(analysis => `
+                <div class="analysis-item">
+                    <span class="analysis-type">${analysis.type}</span>
+                    <span class="analysis-score ${analysis.score.toLowerCase()}">${analysis.score}</span>
+                    <span class="analysis-description">${analysis.description}</span>
+                </div>
+            `).join('');
+            
+            // Create danceability types section
+            const danceabilityTypesHTML = result.danceability.type.map(type => `
+                <div class="danceability-type">
+                    <span class="type-emoji">${type.emoji}</span>
+                    <span class="type-name">${type.type}</span>
+                    <span class="type-description">${type.description}</span>
+                </div>
+            `).join('');
+            
             fileResult.innerHTML = `
                 <h3>🎵 ${result.fileName}</h3>
                 <div class="results-grid">
                     <div class="result-card">
-                        <h4>📊 RMS Level</h4>
-                        <div class="result-value">${formatRMS(result.basicStats.rms)}</div>
+                        <h4>🎶 Fast BPM Detection</h4>
+                        <div class="result-value">${result.bpm.bpm} BPM</div>
+                        <div class="result-subtitle">${result.bpm.tempoCategory} (${(result.bpm.confidence * 100).toFixed(1)}% confidence)</div>
                     </div>
                     <div class="result-card">
-                        <h4>🎚️ Dynamic Range</h4>
-                        <div class="result-value">${formatDynamicRange(result.basicStats.dynamicRange)}</div>
+                        <h4>🕺 Enhanced Danceability</h4>
+                        <div class="result-value">${result.danceability.score.toFixed(1)}%</div>
+                        <div class="result-subtitle">${result.danceability.category} (${(result.danceability.confidence * 100).toFixed(1)}% confidence)</div>
+                        <div class="danceability-types">
+                            ${danceabilityTypesHTML}
+                        </div>
                     </div>
                     <div class="result-card">
-                        <h4>🎵 Dominant Frequency</h4>
-                        <div class="result-value">${formatFrequency(result.frequencyAnalysis.dominantFrequency)}</div>
+                        <h4>😊 Advanced Mood Analysis</h4>
+                        <div class="result-value">${result.mood.emoji} ${result.mood.primaryMood}</div>
+                        <div class="result-subtitle">${result.mood.songType} • ${result.mood.secondaryMood}</div>
+                        <div class="mood-explanation">${result.mood.moodExplanation}</div>
                     </div>
-                    <div class="result-card">
-                        <h4>🎶 Estimated Tempo</h4>
-                        <div class="result-value">${formatTempo(result.rhythmAnalysis.estimatedTempo)}</div>
-                    </div>
-                    <div class="result-card">
-                        <h4>🎚️ Spectral Centroid</h4>
-                        <div class="result-value">${formatFrequency(result.spectralAnalysis.spectralCentroid)}</div>
-                    </div>
-                    <div class="result-card">
-                        <h4>📈 Zero Crossing Rate</h4>
-                        <div class="result-value">${formatRate(result.rhythmAnalysis.zeroCrossingRate)}</div>
+                </div>
+                <div class="detailed-analysis">
+                    <h4>📊 Detailed Song Analysis</h4>
+                    <div class="analysis-grid">
+                        ${detailedAnalysisHTML}
                     </div>
                 </div>
             `;
@@ -424,24 +804,4 @@ function displayAllResults(allResults) {
         
         resultsContainer.appendChild(fileResult);
     });
-}
-
-function formatRMS(rms) {
-    return rms ? `${(rms * 100).toFixed(2)}%` : 'N/A';
-}
-
-function formatDynamicRange(range) {
-    return range ? `${(range * 100).toFixed(2)}%` : 'N/A';
-}
-
-function formatFrequency(freq) {
-    return freq ? `${freq.toFixed(1)} Hz` : 'N/A';
-}
-
-function formatTempo(tempo) {
-    return tempo ? `${tempo} BPM` : 'N/A';
-}
-
-function formatRate(rate) {
-    return rate ? `${(rate * 1000).toFixed(2)}` : 'N/A';
 }

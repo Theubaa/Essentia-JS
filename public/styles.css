@@ -210,7 +210,7 @@ header p {
 
 .results-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
 }
 
@@ -221,6 +221,8 @@ header p {
     text-align: center;
     border: 1px solid #e0e6ff;
     transition: transform 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .result-card:hover {
@@ -235,10 +237,181 @@ header p {
 }
 
 .result-value {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     font-weight: bold;
     color: #667eea;
-    min-height: 1.5rem;
+    min-height: 2rem;
+    margin-bottom: 5px;
+}
+
+.result-subtitle {
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%);
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.mood-explanation {
+    font-size: 0.75rem;
+    color: #888;
+    background: #f8f9ff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+    line-height: 1.4;
+    text-align: left;
+    border-left: 3px solid #667eea;
+}
+
+/* Special styling for different analysis types */
+.result-card:nth-child(1) .result-value {
+    color: #e74c3c; /* BPM - Red */
+}
+
+.result-card:nth-child(2) .result-value {
+    color: #f39c12; /* Danceability - Orange */
+}
+
+.result-card:nth-child(3) .result-value {
+    color: #9b59b6; /* Mood - Purple */
+}
+
+/* Danceability types styling */
+.danceability-types {
+    margin-top: 15px;
+    padding: 10px;
+    background: linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%);
+    border-radius: 8px;
+    border-left: 3px solid #f39c12;
+}
+
+.danceability-type {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    padding: 5px 0;
+    border-bottom: 1px solid #ffe6cc;
+}
+
+.danceability-type:last-child {
+    border-bottom: none;
+}
+
+.type-emoji {
+    font-size: 1.2rem;
+    margin-right: 8px;
+    min-width: 20px;
+}
+
+.type-name {
+    font-weight: 600;
+    color: #d68910;
+    margin-right: 8px;
+    flex: 1;
+}
+
+.type-description {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+}
+
+/* Detailed analysis styling */
+.detailed-analysis {
+    margin-top: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+    border-radius: 15px;
+    border: 1px solid #d0d7ff;
+}
+
+.detailed-analysis h4 {
+    text-align: center;
+    color: #667eea;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.analysis-item {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #e0e6ff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform 0.2s ease;
+}
+
+.analysis-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.analysis-type {
+    font-weight: 600;
+    color: #667eea;
+    font-size: 1.1rem;
+}
+
+.analysis-score {
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    text-align: center;
+    display: inline-block;
+    width: fit-content;
+}
+
+.analysis-score.high {
+    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    color: white;
+}
+
+.analysis-score.medium {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+}
+
+.analysis-score.low {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white;
+}
+
+.analysis-description {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+    font-style: italic;
+}
+
+/* Responsive design for analysis grid */
+@media (max-width: 768px) {
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .danceability-types {
+        margin-top: 10px;
+        padding: 8px;
+    }
+    
+    .detailed-analysis {
+        margin-top: 20px;
+        padding: 15px;
+    }
 }
 
 .loading {
@@ -304,5 +477,18 @@ header p {
         flex-direction: column;
         gap: 10px;
         text-align: center;
+    }
+    
+    .result-card {
+        padding: 15px;
+    }
+    
+    .result-value {
+        font-size: 1.3rem;
+    }
+    
+    .mood-explanation {
+        font-size: 0.7rem;
+        padding: 6px 10px;
     }
 }
