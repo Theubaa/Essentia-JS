@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Analysis Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 Audio Analysis Demo</h1>
+            <p>Upload multiple audio files to analyze their musical features</p>
+        </header>
+
+        <main>
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">📁</div>
+                        <h3>Drop your audio files here</h3>
+                        <p>or click to browse (supports multiple files)</p>
+                        <input type="file" id="audioFile" accept="audio/*" multiple hidden>
+                    </div>
+                </div>
+                <button id="analyzeBtn" class="analyze-btn" disabled>Analyze All Audio Files</button>
+            </div>
+
+            <div class="file-list" id="fileList" style="display: none;">
+                <h3>📋 Selected Files</h3>
+                <div id="fileItems" class="file-items"></div>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h2>Analysis Results</h2>
+                <div id="resultsContainer" class="results-container">
+                    <!-- Results will be dynamically added here -->
+                </div>
+            </div>
+
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing audio files...</p>
+                <div id="progressText" class="progress-text">Processing...</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
