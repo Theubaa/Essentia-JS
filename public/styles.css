@@ -414,19 +414,122 @@ header p {
     }
 }
 
+/* BPM Methods Display */
+.bpm-methods {
+    margin-top: 15px;
+    padding: 10px;
+    background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+    border-radius: 8px;
+    border-left: 3px solid #e74c3c;
+}
+
+.method-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 8px 0;
+    padding: 5px 0;
+    border-bottom: 1px solid #ffcccc;
+}
+
+.method-item:last-child {
+    border-bottom: none;
+}
+
+.method-name {
+    font-weight: 600;
+    color: #c0392b;
+    font-size: 0.9rem;
+}
+
+.method-value {
+    font-weight: bold;
+    color: #e74c3c;
+    font-size: 0.9rem;
+}
+
+/* Danceability Breakdown */
+.danceability-breakdown {
+    margin-top: 15px;
+    padding: 10px;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border-radius: 8px;
+    border-left: 3px solid #f39c12;
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 6px 0;
+    padding: 4px 0;
+    border-bottom: 1px solid #ffe0b2;
+}
+
+.breakdown-item:last-child {
+    border-bottom: none;
+}
+
+.breakdown-label {
+    font-weight: 600;
+    color: #d68910;
+    font-size: 0.85rem;
+}
+
+.breakdown-value {
+    font-weight: bold;
+    color: #f39c12;
+    font-size: 0.85rem;
+    background: rgba(243, 156, 18, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Enhanced result cards for professional analysis */
+.result-card:nth-child(1) {
+    border-left: 4px solid #e74c3c;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%);
+}
+
+.result-card:nth-child(2) {
+    border-left: 4px solid #f39c12;
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3e0 100%);
+}
+
+.result-card:nth-child(3) {
+    border-left: 4px solid #9b59b6;
+    background: linear-gradient(135deg, #f8f4ff 0%, #f0e6ff 100%);
+}
+
+/* Professional styling for accuracy indicators */
+.result-subtitle {
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%);
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #d0d7ff;
+}
+
+/* Enhanced loading animation for professional processing */
 .loading {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 30px;
     text-align: center;
-    padding: 40px;
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
 }
 
 .spinner {
     width: 50px;
     height: 50px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 20px;
@@ -437,16 +540,11 @@ header p {
     100% { transform: rotate(360deg); }
 }
 
-.loading p {
-    font-size: 1.1rem;
-    color: #666;
-    margin-bottom: 10px;
-}
-
 .progress-text {
-    font-size: 0.9rem;
-    color: #667eea;
-    font-weight: bold;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 15px;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Responsive design */
